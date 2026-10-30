@@ -178,15 +178,17 @@
             if(gasUrl !== "https://script.google.com/macros/s/AKfycbxdZDyHEhNgzyEvQ85ZVm0Da1YYbel6mEbyrzaBgj8F_-wjZPcMsETIEjGM5UWz1Qu5-w/exec") {
                 fetch(gasUrl, {
                     method: 'POST',
+                    mode: 'no-cors', // Negeert de strenge CORS veiligheidscheck
+                    headers: {
+                        'Content-Type': 'text/plain' // Voorkomt een voorcontrole (preflight)
+                    },
                     body: JSON.stringify({
                         studentNummer: studentNummer,
                         winnendeStijl: winningStyle,
                         scores: scores
                     })
                 }).then(() => {
-                    document.getElementById('saving-status').innerText = "Resultaat succesvol gekoppeld!";
-                }).catch(() => {
-                    document.getElementById('saving-status').innerText = "Netwerkfout bij opslaan.";
+                    document.getElementById('saving-status').innerText = "Resultaat succesvol doorgestuurd!";
                 });
             } else {
                 document.getElementById('saving-status').innerText = "(Testmodus: niet opgeslagen)";
