@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Begeleidingsstijl Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wood: { light: '#faedcd', medium: '#d4a373', dark: '#a66a38' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { overflow: hidden; background-color: #faedcd; font-family: sans-serif; }
+        .card { position: absolute; width: 100%; height: 100%; transform-origin: 50% 100%; transition: transform 0.3s ease, opacity 0.3s ease; background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: center; padding: 2rem; text-align: center; font-size: 1.25rem; font-weight: 500; cursor: grab; border: 2px solid #d4a373; }
+        .card.dragging { transition: none; cursor: grabbing; }
+        #card-container { position: relative; width: 90%; max-width: 400px; height: 350px; margin: 2rem auto; }
+        .stamp { position: absolute; top: 20px; font-size: 2rem; font-weight: bold; padding: 0.5rem 1rem; border: 4px solid; border-radius: 0.5rem; opacity: 0; text-transform: uppercase; z-index: 10; }
+        .stamp-yes { right: 20px; color: #16a34a; border-color: #16a34a; transform: rotate(15deg); }
+        .stamp-no { left: 20px; color: #dc2626; border-color: #dc2626; transform: rotate(-15deg); }
+    </style>
+</head>
+<body class="flex flex-col h-screen">
+
+    <!-- Voortgangsbalk -->
+    <div id="progress-container" class="hidden w-full h-4 bg-wood-medium/30">
+        <div id="progress-bar" class="h-full bg-wood-dark w-0 transition-all duration-300"></div>
+    </div>
+
+    <!-- Startscherm -->
+    <div id="start-screen" class="flex flex-col items-center justify-center flex-1 p-6 text-center">
+        <h1 class="text-2xl font-bold text-wood-dark mb-4">Jouw ideale stagebegeleiding</h1>
+        <p class="mb-6 text-gray-700">Ontdek welke stijl het beste bij jou past door praktijksituaties naar rechts (JA) of links (NEE) te swipen.</p>
+        <input type="number" id="student-number" placeholder="Studentnummer" class="px-4 py-3 border-2 border-wood-medium rounded-lg mb-4 w-full max-w-xs focus:outline-none focus:border-wood-dark text-center text-lg">
+        <button id="start-btn" class="bg-wood-dark text-white font-bold py-3 px-8 rounded-lg shadow hover:bg-wood-medium w-full max-w-xs">Start Test</button>
+    </div>
+
+    <!-- Swipe Scherm -->
+    <div id="swipe-screen" class="hidden flex-col flex-1 items-center justify-center relative">
+        <div id="card-container"></div>
+        <div class="flex justify-between w-full max-w-xs mt-8 px-4">
+            <button id="btn-no" class="bg-red-100 text-red-600 font-bold py-3 px-6 rounded-full border-2 border-red-200">❌ NEE</button>
+            <button id="btn-yes" class="bg-green-100 text-green-600 font-bold py-3 px-6 rounded-full border-2 border-green-200">JA 💚</button>
+        </div>
+    </div>
+
+    <!-- Eindscherm -->
+    <div id="result-screen" class="hidden flex-col items-center justify-center flex-1 p-6 text-center">
+        <h2 class="text-3xl font-bold text-wood-dark mb-2">Klaar!</h2>
+        <p class="text-gray-700 mb-6">Jouw voorkeur gaat uit naar:</p>
+        <div id="result-style" class="text-2xl font-bold bg-white border-4 border-wood-medium p-4 rounded-xl mb-6 text-wood-dark"></div>
+        <p id="saving-status" class="text-sm text-gray-500 italic">Resultaat wordt opgeslagen voor StageMatching...</p>
+    </div>
+
+    <script>
+        // Plaats hier later de URL van je Google Apps Script Web App
+        const gasUrl = "VUL_HIER_JE_GAS_URL_IN"; 
+        
+        let studentNummer = "";
+        let currentCardIndex = 0;
+        const scores = { "Voordoen": 0, "Samen doen": 0, "Meedenken": 0, "Loslaten": 0 };
+
+        // Tijdelijke situaties (later aan te vullen)
+        const situations = [
+            { text: "De leermeester stelt de formaatzaag voor me in en ik kijk toe.", style: "Voordoen" },
+            { text: "We bespreken samen de werktekening voordat we beginnen.", style: "Samen doen" },
+            { text: "Ik verlijm het werkstuk, de leermeester geeft af en toe een tip.", style: "Meedenken" },
+            { text: "Ik zoek zelf uit hoe de houtverbinding zit, de leermeester werkt verder.", style: "Loslaten" }
+        ];
+
+        const container = document.getElementById('card-container');
+        const progressBar = document.getElementById('progress-bar');
+        
+        document.getElementById('start-btn').addEventListener('click', () => {
+            const input = document.getElementById('student-number').value.trim();
+            if (input.length < 4) { alert("Vul een geldig studentnummer in."); return; }
+            studentNummer = input;
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('progress-container').classList.remove('hidden');
+            document.getElementById('swipe-screen').classList.replace('hidden', 'flex');
+            initCards();
+        });
+
+        function initCards() {
+            // Render kaarten in omgekeerde volgorde (zodat index 0 bovenop ligt)
+            situations.reverse().forEach((sit, index) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="stamp stamp-yes">JA</div>
+                    <div class="stamp stamp-no">NEE</div>
+                    <p>${sit.text}</p>
+                `;
+                card.dataset.style = sit.style;
+                container.appendChild(card);
+            });
+            situations.reverse(); // Herstel originele volgorde voor logica
+            updateTopCard();
+        }
+
+        function updateTopCard() {
+            const cards = document.querySelectorAll('.card');
+            if (cards.length === 0) { finishTest(); return; }
+            
+            const topCard = cards[cards.length - 1];
+            setupHammer(topCard);
+            
+            // Update voortgang
+            const progress = ((situations.length - cards.length) / situations.length) * 100;
+            progressBar.style.width = `${progress}%`;
+        }
+
+        function setupHammer(card) {
+            const hammer = new Hammer(card);
+            const stampYes = card.querySelector('.stamp-yes');
+            const stampNo = card.querySelector('.stamp-no');
+            
+            hammer.on('pan', (e) => {
+                card.classList.add('dragging');
+                card.style.transform = `translate(${e.deltaX}px, ${e.deltaY}px) rotate(${e.deltaX * 0.05}deg)`;
+                
+                if (e.deltaX > 50) { stampYes.style.opacity = e.deltaX / 100; stampNo.style.opacity = 0; }
+                else if (e.deltaX < -50) { stampNo.style.opacity = Math.abs(e.deltaX) / 100; stampYes.style.opacity = 0; }
+                else { stampYes.style.opacity = 0; stampNo.style.opacity = 0; }
+            });
+
+            hammer.on('panend', (e) => {
+                card.classList.remove('dragging');
+                if (e.deltaX > 100) { handleSwipe(card, true); }
+                else if (e.deltaX < -100) { handleSwipe(card, false); }
+                else {
+                    card.style.transform = '';
+                    stampYes.style.opacity = 0;
+                    stampNo.style.opacity = 0;
+                }
+            });
+        }
+
+        function handleSwipe(card, isYes) {
+            card.style.transform = `translate(${isYes ? 1000 : -1000}px, 0) rotate(${isYes ? 30 : -30}deg)`;
+            card.style.opacity = 0;
+            
+            if (isYes) scores[card.dataset.style]++;
+            
+            setTimeout(() => {
+                card.remove();
+                updateTopCard();
+            }, 300);
+        }
+
+        // Knoppen logica
+        document.getElementById('btn-yes').addEventListener('click', () => {
+            const cards = document.querySelectorAll('.card');
+            if(cards.length > 0) handleSwipe(cards[cards.length - 1], true);
+        });
+        document.getElementById('btn-no').addEventListener('click', () => {
+            const cards = document.querySelectorAll('.card');
+            if(cards.length > 0) handleSwipe(cards[cards.length - 1], false);
+        });
+
+        function finishTest() {
+            progressBar.style.width = '100%';
+            document.getElementById('swipe-screen').classList.replace('flex', 'hidden');
+            document.getElementById('result-screen').classList.replace('hidden', 'flex');
+            
+            // Bepaal de winnende stijl
+            const winningStyle = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+            document.getElementById('result-style').innerText = winningStyle;
+
+            // Verzend data
+            if(gasUrl !== "VUL_HIER_JE_GAS_URL_IN") {
+                fetch(gasUrl, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        studentNummer: studentNummer,
+                        winnendeStijl: winningStyle,
+                        scores: scores
+                    })
+                }).then(() => {
+                    document.getElementById('saving-status').innerText = "Resultaat succesvol gekoppeld!";
+                }).catch(() => {
+                    document.getElementById('saving-status').innerText = "Netwerkfout bij opslaan.";
+                });
+            } else {
+                document.getElementById('saving-status').innerText = "(Testmodus: niet opgeslagen)";
+            }
+        }
+    </script>
+</body>
+</html>
