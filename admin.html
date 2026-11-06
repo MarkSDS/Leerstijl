@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StageMatching - Control Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        wood: { light: '#faedcd', medium: '#d4a373', dark: '#a66a38' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-wood-light flex items-center justify-center h-screen font-sans">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg border-2 border-wood-medium w-full max-w-md text-center">
+        <h1 class="text-3xl font-bold text-wood-dark mb-4">Control Panel</h1>
+        <p class="text-gray-600 mb-6">Verplaats alle openstaande studentresultaten vanuit de buffer naar het juiste klas-tabblad in je Google Sheet.</p>
+        
+        <div class="mb-6 text-left">
+            <label for="klas-input" class="block text-sm font-bold text-gray-700 mb-2">Klasnaam (bijv. 22A of MB23)</label>
+            <input type="text" id="klas-input" class="w-full px-4 py-3 border-2 border-wood-medium rounded-lg focus:outline-none focus:border-wood-dark text-lg" placeholder="Voer klasnaam in">
+        </div>
+
+        <button id="btn-afsluiten" class="bg-wood-dark text-white font-bold py-3 px-8 rounded-lg shadow hover:bg-wood-medium w-full transition-colors">
+            Sessie Afsluiten & Opslaan
+        </button>
+
+        <div id="status-message" class="mt-6 p-4 rounded-lg hidden font-bold"></div>
+    </div>
+
+    <script>
+        // Vul hier dezelfde Google Apps Script URL in als in je studenten app
+        const gasUrl = "https://script.google.com/macros/s/AKfycbznHHZpd9r5slLONkqV3BNYa7x4VQLlgzGmzXp2ENm4ANOLhY_8xioYgom2pyNyIvU5mA/exec"; 
+        
+        document.getElementById('btn-afsluiten').addEventListener('click', async () => {
+            const klasInput = document.getElementById('klas-input').value.trim();
+            const statusDiv = document.getElementById('status-message');
+            const btn = document.getElementById('btn-afsluiten');
+
+            if (!klasInput) {
+                toonStatus('Vul eerst een klasnaam in.', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "Bezig met opslaan...";
+            statusDiv.classList.add('hidden');
+
+            try {
+                // Let op: we gebruiken de actie 'verwerkKlas'
+                const response = await fetch(gasUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'verwerkKlas',
+                        klasNaam: klasInput.toUpperCase()
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    toonStatus(result.message, 'success');
+                    document.getElementById('klas-input').value = ''; // Maak veld leeg
+                } else {
+                    toonStatus(result.message, 'error');
+                }
+            } catch (error) {
+                // Bij CORS issues met GAS vangen we dit soepel op
+                toonStatus('Fout bij communicatie met Google Sheets. Controleer de URL.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Sessie Afsluiten & Opslaan";
+            }
+        });
+
+        function toonStatus(bericht, type) {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.innerText = bericht;
+            statusDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+            
+            if (type === 'error') {
+                statusDiv.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                statusDiv.classList.add('bg-green-100', 'text-green-700');
+            }
+        }
+    </script>
+</body>
+</html>
