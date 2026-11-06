@@ -80,7 +80,14 @@
         
         document.getElementById('start-btn').addEventListener('click', () => {
             const input = document.getElementById('student-number').value.trim();
-            if (input.length < 4) { alert("Vul een geldig studentnummer in."); return; }
+            const number = parseInt(input, 10); // Zet de invoer om naar een decimaal getal
+        
+            // Check of er niets is ingevuld (isNaN) of het getal kleiner is dan 65000
+            if (isNaN(number) || number < 65000) { 
+                alert("Vul een geldig studentnummer in (minimaal 65000)."); 
+                return; 
+            }
+            
             studentNummer = input;
             document.getElementById('start-screen').classList.add('hidden');
             document.getElementById('progress-container').classList.remove('hidden');
