@@ -183,6 +183,7 @@
                         'Content-Type': 'text/plain' // Voorkomt een voorcontrole (preflight)
                     },
                     body: JSON.stringify({
+                        action: 'saveScore',
                         studentNummer: studentNummer,
                         winnendeStijl: winningStyle,
                         scores: scores
