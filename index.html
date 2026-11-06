@@ -70,6 +70,9 @@ let studentNummer = "";
         // We beginnen met een lege lijst, deze wordt gevuld vanuit de Google Sheet
         let situations = []; 
 
+        const container = document.getElementById('card-container');
+        const progressBar = document.getElementById('progress-bar');
+        
         // Zodra de pagina laadt, halen we de stellingen op
         window.addEventListener('DOMContentLoaded', async () => {
             const startBtn = document.getElementById('start-btn');
