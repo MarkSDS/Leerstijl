@@ -63,20 +63,44 @@
         // Plaats hier later de URL van je Google Apps Script Web App
         const gasUrl = "https://script.google.com/macros/s/AKfycbznHHZpd9r5slLONkqV3BNYa7x4VQLlgzGmzXp2ENm4ANOLhY_8xioYgom2pyNyIvU5mA/exec"; 
         
-        let studentNummer = "";
+let studentNummer = "";
         let currentCardIndex = 0;
         const scores = { "Voordoen": 0, "Samen doen": 0, "Meedenken": 0, "Loslaten": 0 };
+        
+        // We beginnen met een lege lijst, deze wordt gevuld vanuit de Google Sheet
+        let situations = []; 
 
-        // Tijdelijke situaties (later aan te vullen)
-        const situations = [
-            { text: "De leermeester stelt de formaatzaag voor me in en ik kijk toe.", style: "Voordoen" },
-            { text: "We bespreken samen de werktekening voordat we beginnen.", style: "Samen doen" },
-            { text: "Ik verlijm het werkstuk, de leermeester geeft af en toe een tip.", style: "Meedenken" },
-            { text: "Ik zoek zelf uit hoe de houtverbinding zit, de leermeester werkt verder.", style: "Loslaten" }
-        ];
+        // Zodra de pagina laadt, halen we de stellingen op
+        window.addEventListener('DOMContentLoaded', async () => {
+            const startBtn = document.getElementById('start-btn');
+            startBtn.innerText = "Stellingen laden...";
+            startBtn.disabled = true; // Knop blokkeren tot we data hebben
+            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
-        const container = document.getElementById('card-container');
-        const progressBar = document.getElementById('progress-bar');
+            try {
+                // Vraag de data op via GET
+                const response = await fetch(gasUrl + "?action=getSituations");
+                const result = await response.json();
+
+                if (result.status === 'success' && result.data.length > 0) {
+                    situations = result.data;
+                    
+                    // Schud de array (optioneel, maar leuk voor de test!)
+                    // situations.sort(() => Math.random() - 0.5); 
+
+                    startBtn.innerText = "Start Test";
+                    startBtn.disabled = false;
+                    startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    alert("Geen stellingen gevonden. Controleer het tabblad 'Situaties'.");
+                    startBtn.innerText = "Fout bij laden";
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Fout bij laden van stellingen. Controleer je internetverbinding.");
+                startBtn.innerText = "Fout bij laden";
+            }
+        });
         
         document.getElementById('start-btn').addEventListener('click', () => {
             const input = document.getElementById('student-number').value.trim();
